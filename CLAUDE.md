@@ -8,6 +8,7 @@
 - `docs/requirements.md`：要件（F1〜）と決めた点
 - `docs/architecture.md`：技術構成・処理の流れ・データモデル
 - `docs/roadmap.md`：マイルストーンと状態
+- `docs/setup.md`：利用者向けの Supabase・Vercel の設定手順
 
 ## 開発ルール
 - サイトの UI 文言・結果・エラーメッセージはすべて英語。ドキュメントとユーザーへの説明は日本語
@@ -20,6 +21,7 @@
 
 ## コミット前のチェック
 ```bash
-npm run check   # 単体テスト・lint・型チェック・本番ビルド
+npm run check   # 単体テスト・lint・型チェック・DB テスト・本番ビルド（PostgreSQL がなければ SKIP_DB=1）
 ```
+DB を変えるときは新しいマイグレーションを足す（適用済みのものは書き換えない）。本番には利用者が SQL Editor で流すので、`docs/setup.md` も更新する。
 画面を変えたら Playwright でスマホ幅（ライト・ダーク）を操作して確かめる。
