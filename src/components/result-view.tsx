@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { LookupResult } from "@/lib/domain/lookup-result";
+import { SpeakButton } from "./speak-button";
 
 const KIND_LABELS: Record<LookupResult["kind"], string> = {
   word: "Word",
@@ -37,7 +38,10 @@ export function ResultView({ result }: { result: LookupResult }) {
     <article className="flex flex-col gap-4" aria-live="polite">
       <header>
         <p className="text-sm text-muted">{KIND_LABELS[result.kind]}</p>
-        <h2 className="mt-1 text-3xl font-bold break-words">{result.query}</h2>
+        <div className="mt-1 flex items-start gap-3">
+          <h2 className="min-w-0 flex-1 text-3xl font-bold break-words">{result.query}</h2>
+          <SpeakButton text={result.query} label="Listen" />
+        </div>
         {result.phonetic && <p className="mt-1 text-lg text-muted">{result.phonetic}</p>}
         {result.paraphrase && <p className="mt-3 text-lg">{result.paraphrase}</p>}
       </header>
@@ -56,7 +60,10 @@ export function ResultView({ result }: { result: LookupResult }) {
               {s.examples.length > 0 && (
                 <ul className="mt-2 flex flex-col gap-1 border-l-2 border-border pl-3 text-muted">
                   {s.examples.map((ex) => (
-                    <li key={ex}>“{ex}”</li>
+                    <li key={ex} className="flex items-start gap-2">
+                      <span className="min-w-0 flex-1">“{ex}”</span>
+                      <SpeakButton text={ex} label="Listen to example" size="sm" />
+                    </li>
                   ))}
                 </ul>
               )}
