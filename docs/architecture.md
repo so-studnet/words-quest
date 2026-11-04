@@ -65,7 +65,7 @@
 - 入力の判定・AI 応答の検証と整形・回数制限の判定など、間違えやすいロジックは `src/lib/domain/` の純粋関数にして Vitest で固める
 - AI の呼び出しは `AiProvider` インターフェースの裏に隠す。テストでは偽の Provider を使う
 - 秘密の値はサーバー側（Route Handler）でだけ使う
-- 履歴はブラウザ内保存（localStorage、キーに版 `:v1` を付ける）
+- 履歴はブラウザ内保存（localStorage のキー `wq:history:v1`）。`src/lib/history-store.ts` が `useSyncExternalStore` 用のストアで、別タブの変更も反映する。追加・削除・復元は `src/lib/domain/history.ts` の純粋関数
 
 ## ディレクトリ構成
 

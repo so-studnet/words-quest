@@ -5,28 +5,33 @@ import { useEffect, useState } from "react";
 import { isApiErrorBody } from "@/lib/domain/lookup-error";
 import type { LookupResult } from "@/lib/domain/lookup-result";
 import { parseQuery, QUERY_ERROR_MESSAGES } from "@/lib/domain/query";
+import { history } from "@/lib/history-store";
+import { HistoryList } from "./history-list";
 import { ResultView } from "./result-view";
 
-type Fetched =
-  | { q: string; status: "done"; result: LookupResult }
-  | { q: string; status: "error"; message: string; notFound: boolean };
+type FetchedBody =
+  | { status: "done"; result: LookupResult }
+  | { status: "error"; message: string; notFound: boolean };
+
+/** A response, tagged with the query and retry attempt it belongs to. */
+type Fetched = FetchedBody & { q: string; attempt: number };
 
 function searchHref(text: string): string {
   return `/?q=${encodeURIComponent(text)}`;
 }
 
-async function fetchLookup(q: string, signal: AbortSignal): Promise<Fetched> {
+async function fetchLookup(q: string, signal: AbortSignal): Promise<FetchedBody> {
   try {
     const res = await fetch(`/api/v1/lookup?q=${encodeURIComponent(q)}`, { signal });
     const body: unknown = await res.json().catch(() => null);
-    if (res.ok && body) return { q, status: "done", result: body as LookupResult };
+    if (res.ok && body) return { status: "done", result: body as LookupResult };
     if (isApiErrorBody(body)) {
-      return { q, status: "error", message: body.error.message, notFound: body.error.code === "not_found" };
+      return { status: "error", message: body.error.message, notFound: body.error.code === "not_found" };
     }
-    return { q, status: "error", message: "Something went wrong. Please try again.", notFound: false };
+    return { status: "error", message: "Something went wrong. Please try again.", notFound: false };
   } catch (e) {
     if (signal.aborted) throw e;
-    return { q, status: "error", message: "Could not connect. Check your network and try again.", notFound: false };
+    return { status: "error", message: "Could not connect. Check your network and try again.", notFound: false };
   }
 }
 
@@ -35,13 +40,17 @@ export function SearchForm() {
   const q = (useSearchParams().get("q") ?? "").trim();
   const [fetched, setFetched] = useState<Fetched | null>(null);
   const [inputError, setInputError] = useState<{ q: string; message: string } | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!q || !parseQuery(q).ok) return;
     const controller = new AbortController();
-    fetchLookup(q, controller.signal).then(setFetched, () => {});
+    fetchLookup(q, controller.signal).then((body) => {
+      setFetched({ ...body, q, attempt });
+      if (body.status === "done") history.add(body.result.query, body.result.kind);
+    }, () => {});
     return () => controller.abort();
-  }, [q]);
+  }, [q, attempt]);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -57,7 +66,7 @@ export function SearchForm() {
 
   const urlError = q && !parseQuery(q).ok ? QUERY_ERROR_MESSAGES[(parseQuery(q) as { error: "empty" }).error] : null;
   const error = inputError?.q === q ? inputError.message : urlError;
-  const current = fetched?.q === q ? fetched : null;
+  const current = fetched?.q === q && fetched.attempt === attempt ? fetched : null;
   const loading = Boolean(q) && !urlError && !current;
 
   return (
@@ -76,10 +85,21 @@ export function SearchForm() {
         <section className="rounded-xl border border-border p-4">
           <h2 className="text-lg font-semibold">{current.notFound ? "No entry found" : "Lookup failed"}</h2>
           <p className="mt-1 text-muted">{current.message}</p>
+          {!current.notFound && (
+            <button
+              type="button"
+              onClick={() => setAttempt((n) => n + 1)}
+              className="mt-3 rounded-lg border border-border px-4 py-2 font-semibold hover:border-accent"
+            >
+              Try again
+            </button>
+          )}
         </section>
       )}
 
       {!error && current?.status === "done" && <ResultView result={current.result} />}
+
+      {!q && <HistoryList />}
     </div>
   );
 }
@@ -103,7 +123,7 @@ function SearchBox({
         name="q"
         type="search"
         defaultValue={defaultValue}
-        placeholder="e.g. serendipity, break the ice"
+        placeholder="Word, phrase, or sentence"
         autoComplete="off"
         autoCapitalize="none"
         spellCheck={false}
