@@ -7,12 +7,16 @@
 | M0 | 壁打ち・要件ドキュメント | 完了 |
 | M1 | Next.js の土台、入力の検証と種類の判定（純粋関数＋テスト）、仮の検索画面 | 完了 |
 | M2 | AI（Groq）で検索：`/api/v1/lookup`、応答の検証、結果の表示、類義語から再検索 | 実装完了（本物の Groq での確認は未。偽の Groq サーバーで確認済み） |
+| M2.5 | Vercel で先に公開（キャッシュなし）。ローカルで動かせないため、本物の Groq での確認を公開先で行う | 未着手（ユーザーの設定待ち） |
 | M3 | 検索履歴（localStorage）、読み上げ、見つからないとき・エラーの表示 | 未着手 |
-| M4 | Supabase でキャッシュと回数制限、Vercel で公開 | 未着手 |
+| M4 | Supabase でキャッシュと回数制限 | 未着手 |
 | M5 | 公開 API の仕上げ（CORS、エラーの形、API の説明ページ `/docs/api`） | 未着手 |
 | M6 | PWA・今日の単語の通知（Web Push + pg_cron） | 未着手 |
 | 将来 | お気に入り・単語帳、復習の通知 | ― |
 
-## ユーザーの PC での確認（M2）
+## 動作確認のしかた（M2）
+- 主に Vercel の公開先で確かめる（M2.5）。Vercel の Environment Variables に `GROQ_API_KEY` を入れる
+
+### 自分の PC で動かす場合
 - `.env.example` をコピーして `.env.local` を作り、`GROQ_API_KEY=` に Groq のキーを入れる（キーは会話に貼らない）
 - `npm run dev` で http://localhost:3000 を開いて検索する
