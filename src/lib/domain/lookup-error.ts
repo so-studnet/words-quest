@@ -12,7 +12,7 @@ export type ApiErrorBody = { error: { code: LookupErrorCode; message: string } }
 const ERRORS: Record<LookupErrorCode, { status: number; message: string }> = {
   invalid_query: { status: 400, message: "Type a word, phrase, or sentence in English." },
   not_found: { status: 404, message: "No entry found. Check the spelling and try again." },
-  rate_limited: { status: 429, message: "Too many lookups right now. Please try again later." },
+  rate_limited: { status: 429, message: "Lookup limit reached. Please try again later." },
   not_configured: { status: 503, message: "The lookup service is not set up yet." },
   upstream_error: { status: 502, message: "The lookup service is unavailable. Please try again." },
   invalid_response: { status: 502, message: "Could not read the answer. Please try again." },

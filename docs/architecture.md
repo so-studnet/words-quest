@@ -6,7 +6,7 @@
 |---|---|---|
 | 画面・API | Next.js 16（App Router）+ TypeScript + Tailwind CSS 4 | 画面と API（Route Handler）を1つのプロジェクトで書ける。情報が多く Claude と相性が良い |
 | 生成 AI | Groq API（無料プラン） | カードなしで使え、1日あたりの回数が多く、応答が速い。API への入力を学習に使わない方針 |
-| キャッシュ・回数制限 | Supabase（PostgreSQL・無料プラン）※段階4から | 無料。サーバーからだけ読み書きする |
+| キャッシュ・回数制限 | Supabase（PostgreSQL・無料プラン）+ `@supabase/supabase-js` | 無料。サーバーからだけ読み書きする |
 | 公開 | Vercel（Hobby・無料） | GitHub に push するだけで公開される |
 | テスト | Vitest（ロジック）、Playwright（画面の確認） | |
 | 通知 ※段階6から | PWA + Web Push + Supabase pg_cron | |
@@ -23,11 +23,12 @@
 ```
 画面（SearchForm、URL の ?q= で状態を持つ） ──fetch──▶ GET /api/v1/lookup?q=...
                                  │ parseQuery（入力の検証・種類の判定）
-                                 │ キャッシュ（Supabase）にあれば返す
-                                 │ 回数制限の確認
+                                 │ キャッシュ（Supabase の lookups）にあれば返す（X-Cache: HIT）
+                                 │ 回数制限：IP ごとに1時間 → サイト全体で1日（consume_quota）
                                  │ AiProvider（Groq）に JSON で問い合わせ
                                  │ 応答を検証して LookupResult に整形
-                                 └ キャッシュに保存して返す
+                                 └ キャッシュに保存して返す（X-Cache: MISS）
+  Supabase が止まっている・未設定のときは、キャッシュと回数制限を飛ばして AI に直接問い合わせる（ログに残す）
 ```
 
 ## 環境変数
@@ -37,6 +38,10 @@
 | `GROQ_API_KEY` | Groq の API キー（`gsk_...`） | 秘密。サーバーだけ |
 | `GROQ_MODEL` | 使うモデル（省略時 `openai/gpt-oss-120b`） | 公開してよい |
 | `GROQ_BASE_URL` | テスト用に偽の Groq サーバーへ向けるときだけ使う | ― |
+| `SUPABASE_URL` | Supabase の Project URL | 公開してよい |
+| `SUPABASE_SECRET_KEY` | Supabase の Secret key（`sb_secret_...`） | 秘密。サーバーだけ |
+| `RATE_LIMIT_PER_HOUR` / `AI_DAILY_LIMIT` | 回数制限（既定 30 / 500） | 公開してよい |
+| `RATE_LIMIT_SALT` | IP のハッシュに混ぜる文字列（任意） | ― |
 
 ## API
 
@@ -47,7 +52,7 @@
 | 200 | `LookupResult` |
 | 400 `invalid_query` | 入力が空・英語以外・長すぎる |
 | 404 `not_found` | AI が「そんな語はない」と判断した |
-| 429 `rate_limited` | Groq の回数制限に達した |
+| 429 `rate_limited` | このサイトの回数制限、または Groq の回数制限に達した |
 | 502 `upstream_error` / `invalid_response` | Groq に届かない・応答が読めない（読めないときは1回だけ聞き直す） |
 | 503 `not_configured` | `GROQ_API_KEY` が設定されていない、またはキーが無効 |
 
@@ -56,10 +61,14 @@
 ## データモデル
 
 - `LookupResult`（`src/lib/domain/lookup-result.ts`）：画面と API が共通で使う結果の形
-- Supabase のテーブル（段階4で作る）
-  - `lookups`：`key`（小文字化した入力・主キー）、`kind`、`result`（jsonb）、`model`、`created_at`
-  - `rate_limits`：IP（ハッシュ化）と時間枠ごとの回数
-  - RLS を有効にしてポリシーは作らない（ブラウザからは読み書きできず、サーバーの Secret key だけが使う）
+- Supabase（`supabase/migrations/`）
+  - `lookups`：`key`（小文字化した入力・主キー）、`version`（`RESULT_VERSION`。プロンプトや結果の形を変えたら上げると古い保存結果は使われない）、`kind`、`result`（jsonb）、`model`、`hits`、`created_at`、`last_hit_at`
+  - `rate_limits`：`bucket`（`ip:<ハッシュ>` または `ai`）、`window_start`、`count`。2日より古い行は消す
+  - `consume_quota(bucket, window_start, limit)`：1回分を数え、上限内なら true（上限を超えた分は数えない。同時に来ても超えない）
+  - `touch_lookup(key)`：保存結果が使われた回数を数える
+  - どれも RLS を有効にしてポリシーは作らず、`anon` / `authenticated` からの権限も外す。サーバーの Secret key（service_role）だけが使う
+  - IP アドレスはそのまま保存せず、ハッシュにする
+- DB のテスト：`npm run test:db`（一時的な PostgreSQL に Supabase の最小限を再現し、`supabase/tests/*.test.sql` を流す）
 
 ## 設計のポイント
 - 入力の判定・AI 応答の検証と整形・回数制限の判定など、間違えやすいロジックは `src/lib/domain/` の純粋関数にして Vitest で固める
@@ -76,5 +85,9 @@ src/app/              画面（App Router）と API（app/api/v1/...）
 src/components/       画面の部品
 src/lib/domain/       純粋関数とその型・テスト（入力の判定、プロンプト、AI 応答の検証、エラーの対応表）
 src/lib/ai/           AI の Provider（provider.ts がインターフェース、groq.ts が Groq 実装）
-src/lib/lookup.ts     検索の流れ（Provider を受け取るのでテストで差し替えられる）
+src/lib/lookup.ts     検索の流れ（lookup：AI だけ、lookupCached：キャッシュと回数制限つき。依存を受け取るのでテストで差し替えられる）
+src/lib/store.ts      キャッシュと回数制限のインターフェース
+src/lib/supabase/     Supabase 実装（サーバー専用）
+supabase/migrations/  DB の定義（本番には SQL Editor で手で流す）
+supabase/tests/       DB のテスト
 ```
