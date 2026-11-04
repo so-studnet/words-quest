@@ -14,6 +14,11 @@ export default function Home() {
       <Suspense fallback={<SearchFormFallback />}>
         <SearchForm />
       </Suspense>
+      <footer className="mt-auto pt-8 text-sm text-muted">
+        <Link href="/docs/api" className="hover:text-foreground hover:underline">
+          API
+        </Link>
+      </footer>
     </main>
   );
 }
