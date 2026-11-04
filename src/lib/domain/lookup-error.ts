@@ -1,6 +1,7 @@
 /** Error codes shared by the lookup service, the API, and the UI. */
 export type LookupErrorCode =
   | "invalid_query"
+  | "forbidden_origin"
   | "not_found"
   | "rate_limited"
   | "not_configured"
@@ -11,6 +12,7 @@ export type ApiErrorBody = { error: { code: LookupErrorCode; message: string } }
 
 const ERRORS: Record<LookupErrorCode, { status: number; message: string }> = {
   invalid_query: { status: 400, message: "Type a word, phrase, or sentence in English." },
+  forbidden_origin: { status: 403, message: "This site is not allowed to use the API." },
   not_found: { status: 404, message: "No entry found. Check the spelling and try again." },
   rate_limited: { status: 429, message: "Lookup limit reached. Please try again later." },
   not_configured: { status: 503, message: "The lookup service is not set up yet." },

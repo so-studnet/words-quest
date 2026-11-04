@@ -42,6 +42,7 @@
 | `SUPABASE_SECRET_KEY` | Supabase の Secret key（`sb_secret_...`） | 秘密。サーバーだけ |
 | `RATE_LIMIT_PER_HOUR` / `AI_DAILY_LIMIT` | 回数制限（既定 30 / 500） | 公開してよい |
 | `RATE_LIMIT_SALT` | IP のハッシュに混ぜる文字列（任意） | ― |
+| `ALLOWED_ORIGINS` | ブラウザから API を呼んでよい他のサイト（カンマ区切り。`*` で全部） | 公開してよい |
 
 ## API
 
@@ -51,12 +52,16 @@
 |---|---|
 | 200 | `LookupResult` |
 | 400 `invalid_query` | 入力が空・英語以外・長すぎる |
+| 403 `forbidden_origin` | 許可していないサイトのブラウザから呼ばれた |
 | 404 `not_found` | AI が「そんな語はない」と判断した |
 | 429 `rate_limited` | このサイトの回数制限、または Groq の回数制限に達した |
 | 502 `upstream_error` / `invalid_response` | Groq に届かない・応答が読めない（読めないときは1回だけ聞き直す） |
 | 503 `not_configured` | `GROQ_API_KEY` が設定されていない、またはキーが無効 |
 
 エラーの本文は `{ "error": { "code", "message" } }`。
+
+- CORS（`src/lib/domain/cors.ts`）：`Origin` ヘッダーを見て、なし（サーバーや同じサイトの GET）・同じサイト・許可リスト（`ALLOWED_ORIGINS`）なら通す。許可リストのサイトには `Access-Control-Allow-Origin` などを付け、`X-Cache` も読めるようにする。`OPTIONS`（プリフライト）にも答える
+- 利用者向けの説明は `/docs/api`（`src/app/docs/api/page.tsx`）
 
 ## データモデル
 

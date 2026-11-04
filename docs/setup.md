@@ -68,6 +68,16 @@ AI に問い合わせる回数だけを数える（保存済みの結果は数�
 | `RATE_LIMIT_PER_HOUR` | 1つの IP アドレスから1時間に AI に問い合わせられる回数 | 30 |
 | `AI_DAILY_LIMIT` | サイト全体で1日（UTC）に AI に問い合わせる回数 | 500 |
 
+## 別のサイトから API を使う
+
+自分の別サイトのブラウザ（JavaScript）から呼ぶときは、そのサイトのアドレスを許可する。サーバーから呼ぶとき（Next.js の Route Handler や curl など）は設定不要。
+
+1. Vercel の `words-quest` → **Settings** → **Environment Variables**
+2. **Key** に `ALLOWED_ORIGINS`、**Value** に別サイトのアドレス（例 `https://my-blog.vercel.app`）。複数ならカンマで区切る（`https://a.vercel.app,https://b.example.com`）。末尾の `/` やページのパスはあってもなくてもよい
+3. **Save** → **Deployments** → 一番上の **⋯** → **Redeploy**
+
+使い方は公開中のサイトの `/docs/api`（トップ画面の一番下の「API」）に英語で書いてある。
+
 ## 困ったとき
 
 | 症状 | 原因と対処 |
@@ -75,5 +85,6 @@ AI に問い合わせる回数だけを数える（保存済みの結果は数�
 | 2回目も遅い・`lookups` に行が増えない | Vercel の環境変数が入っていないか、Redeploy していない。Vercel の **Logs** に `[cache]` の行があれば、そのスクリーンショットを送る |
 | Logs に `relation "public.lookups" does not exist` | 手順2の SQL を実行していない |
 | Logs に `Invalid API key` | `SUPABASE_SECRET_KEY` が違う（Publishable key を入れていないか確かめる） |
+| 別サイトから呼ぶと `forbidden_origin`、またはブラウザのコンソールに CORS のエラー | `ALLOWED_ORIGINS` にそのサイトが入っていない（`http` と `https` の違いにも注意）。入れたら Redeploy |
 | 「Lookup limit reached.」が出る | 回数制限に達した。1時間（全体なら翌日の午前9時、日本時間）で戻る |
 | しばらく使っていなかったら保存されない | Supabase の無料プロジェクトは1週間使わないと一時停止する。Supabase のダッシュボードでプロジェクトを開き **Restore project** を押す。停止中も検索は AI に直接問い合わせて動く |
