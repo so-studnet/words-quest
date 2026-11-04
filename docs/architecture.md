@@ -21,7 +21,7 @@
 ## 処理の流れ
 
 ```
-画面（SearchForm） ──fetch──▶ GET /api/v1/lookup?q=...
+画面（SearchForm、URL の ?q= で状態を持つ） ──fetch──▶ GET /api/v1/lookup?q=...
                                  │ parseQuery（入力の検証・種類の判定）
                                  │ キャッシュ（Supabase）にあれば返す
                                  │ 回数制限の確認
@@ -29,6 +29,29 @@
                                  │ 応答を検証して LookupResult に整形
                                  └ キャッシュに保存して返す
 ```
+
+## 環境変数
+
+| 名前 | 内容 | 公開してよいか |
+|---|---|---|
+| `GROQ_API_KEY` | Groq の API キー（`gsk_...`） | 秘密。サーバーだけ |
+| `GROQ_MODEL` | 使うモデル（省略時 `openai/gpt-oss-120b`） | 公開してよい |
+| `GROQ_BASE_URL` | テスト用に偽の Groq サーバーへ向けるときだけ使う | ― |
+
+## API
+
+`GET /api/v1/lookup?q=<入力>`
+
+| 状態 | 本文 |
+|---|---|
+| 200 | `LookupResult` |
+| 400 `invalid_query` | 入力が空・英語以外・長すぎる |
+| 404 `not_found` | AI が「そんな語はない」と判断した |
+| 429 `rate_limited` | Groq の回数制限に達した |
+| 502 `upstream_error` / `invalid_response` | Groq に届かない・応答が読めない（読めないときは1回だけ聞き直す） |
+| 503 `not_configured` | `GROQ_API_KEY` が設定されていない、またはキーが無効 |
+
+エラーの本文は `{ "error": { "code", "message" } }`。
 
 ## データモデル
 
@@ -51,5 +74,7 @@ docs/                 要件・設計・進め方
 scripts/check.sh      コミット前のチェック一式
 src/app/              画面（App Router）と API（app/api/v1/...）
 src/components/       画面の部品
-src/lib/domain/       純粋関数とその型・テスト
+src/lib/domain/       純粋関数とその型・テスト（入力の判定、プロンプト、AI 応答の検証、エラーの対応表）
+src/lib/ai/           AI の Provider（provider.ts がインターフェース、groq.ts が Groq 実装）
+src/lib/lookup.ts     検索の流れ（Provider を受け取るのでテストで差し替えられる）
 ```
