@@ -18,6 +18,14 @@
 - **Google Gemini**：無料枠は Flash-Lite 系で 1日 数百〜1,500 リクエスト程度（モデル・時期で変わり、何度も引き下げられている）。無料枠では入力・出力が Google の製品改善に使われ、人が読むことがある
 - 結論：Groq を使う。`AiProvider` インターフェースの裏に隠し、Gemini 版も後から書けるようにする
 
+## ログインと学習記録（M5.1〜）
+
+- ログインは Supabase Auth（メールアドレス＋パスワード）。ブラウザから Publishable key でつなぐ（`src/lib/supabase/client.ts`、`src/lib/auth.ts`）。`NEXT_PUBLIC_SUPABASE_URL` と `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` がないときはログイン機能を出さない
+- 学習記録はブラウザから直接 `study_items` / `study_events` を読み書きする。他人の行は RLS で見えない・書けない
+- `src/lib/study-store.ts`：ログインしたら全件を読み込み（1000 件ずつ）、変更は画面をすぐ変えてから順番に送る（項目 → 記録）。失敗したらサーバーから読み直す
+- 記録・復習・集計の計算は `src/lib/domain/study.ts` の純粋関数（日付は日本時間の日、時刻は UTC の ISO 文字列）。DB の行との変換は `study-rows.ts`
+- 画面：`/login`、`/learned`、`/review`。下のタブは `src/components/app-nav.tsx`
+
 ## 処理の流れ
 
 ```
@@ -38,7 +46,9 @@
 | `GROQ_API_KEY` | Groq の API キー（`gsk_...`） | 秘密。サーバーだけ |
 | `GROQ_MODEL` | 使うモデル（省略時 `openai/gpt-oss-120b`） | 公開してよい |
 | `GROQ_BASE_URL` | テスト用に偽の Groq サーバーへ向けるときだけ使う | ― |
-| `SUPABASE_URL` | Supabase の Project URL | 公開してよい |
+| `SUPABASE_URL` | Supabase の Project URL（なければ `NEXT_PUBLIC_SUPABASE_URL` を使う） | 公開してよい |
+| `NEXT_PUBLIC_SUPABASE_URL` | 同じ Project URL（ブラウザ用） | 公開してよい |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key（`sb_publishable_...`。ブラウザ用） | 公開してよい（RLS で守る） |
 | `SUPABASE_SECRET_KEY` | Supabase の Secret key（`sb_secret_...`） | 秘密。サーバーだけ |
 | `RATE_LIMIT_PER_HOUR` / `AI_DAILY_LIMIT` | 回数制限（既定 30 / 500） | 公開してよい |
 | `RATE_LIMIT_SALT` | IP のハッシュに混ぜる文字列（任意） | ― |
@@ -73,6 +83,9 @@
   - `touch_lookup(key)`：保存結果が使われた回数を数える
   - どれも RLS を有効にしてポリシーは作らず、`anon` / `authenticated` からの権限も外す。サーバーの Secret key（service_role）だけが使う
   - IP アドレスはそのまま保存せず、ハッシュにする
+  - `study_items`：`id`（アプリで作る UUID）、`user_id`、`key`（ユーザーごとに一意）、`text`、`kind`、`result`（jsonb・なしも可）、`stage`（0〜6。6 は習得済み）、`due_on`（次の復習日。習得済みなら null）、`created_at`（学んだ日時）、`updated_at`
+  - `study_events`：`id`、`user_id`、`item_id`、`type`（`search` / `review_ok` / `review_ng`）、`at`。`(item_id, user_id)` で `study_items` を参照するので、他人の項目には記録を付けられない。項目を消すと記録も消える
+  - `study_*` は RLS で本人だけ（`authenticated` で `user_id = auth.uid()`）。未ログイン（`anon`）は権限なし
 - DB のテスト：`npm run test:db`（一時的な PostgreSQL に Supabase の最小限を再現し、`supabase/tests/*.test.sql` を流す）
 
 ## 設計のポイント
