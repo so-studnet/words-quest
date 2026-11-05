@@ -9,7 +9,7 @@ import type { LookupCache, RateLimiter } from "@/lib/store";
  * Never import this from a Client Component.
  */
 export function supabaseFromEnv(env: Record<string, string | undefined> = process.env): SupabaseClient | null {
-  const url = env.SUPABASE_URL?.trim();
+  const url = (env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL)?.trim();
   const key = env.SUPABASE_SECRET_KEY?.trim();
   if (!url || !key) return null;
   return createClient(url, key, {

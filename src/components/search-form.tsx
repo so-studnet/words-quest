@@ -6,6 +6,7 @@ import { isApiErrorBody } from "@/lib/domain/lookup-error";
 import type { LookupResult } from "@/lib/domain/lookup-result";
 import { parseQuery, QUERY_ERROR_MESSAGES } from "@/lib/domain/query";
 import { history } from "@/lib/history-store";
+import { study } from "@/lib/study-store";
 import { HistoryList } from "./history-list";
 import { ResultView } from "./result-view";
 
@@ -47,7 +48,10 @@ export function SearchForm() {
     const controller = new AbortController();
     fetchLookup(q, controller.signal).then((body) => {
       setFetched({ ...body, q, attempt });
-      if (body.status === "done") history.add(body.result.query, body.result.kind);
+      if (body.status === "done") {
+        history.add(body.result.query, body.result.kind);
+        study.recordSearch(body.result); // no-op when signed out
+      }
     }, () => {});
     return () => controller.abort();
   }, [q, attempt]);

@@ -33,6 +33,6 @@ for f in "$ROOT"/supabase/migrations/*.sql; do
 done
 for f in "$ROOT"/supabase/tests/*.test.sql; do
   # テストごとにデータを空にする
-  "${PSQL[@]}" -d app -c "truncate public.lookups, public.rate_limits"
+  "${PSQL[@]}" -d app -c "truncate public.lookups, public.rate_limits, public.study_events, public.study_items, auth.users cascade"
   "${PSQL[@]}" -d app -f "$f"
 done

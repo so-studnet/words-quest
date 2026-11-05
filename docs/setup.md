@@ -7,10 +7,11 @@ Words Quest を公開して使うための設定。ブラウザだけででき�
 | 値 | 例 | 扱い |
 |---|---|---|
 | Supabase の Project URL | `https://abcd1234.supabase.co` | 公開してよい |
+| Supabase の **Publishable key** | `sb_publishable_...` | 公開してよい（ログイン機能でブラウザに載る。データは RLS で守る） |
 | Supabase の **Secret key** | `sb_secret_...` | **秘密**。Vercel の環境変数にだけ入れる。会話・スクリーンショット・GitHub に出さない |
 | Groq の API キー | `gsk_...` | **秘密**。同上 |
 
-Supabase の **Publishable key**（`sb_publishable_...`）は、このアプリでは使わない（ブラウザから DB に直接つながないため）。
+ログインのパスワードは自分で決めて Supabase に入力するだけ。会話には書かない。
 
 ## 1. Supabase のプロジェクトを作る
 
@@ -59,6 +60,49 @@ Supabase の **Publishable key**（`sb_publishable_...`）は、このアプリ�
    select key, kind, hits, created_at from public.lookups order by created_at desc limit 20;
    ```
 
+## 6. ログインと学習記録を使う（M5.1〜）
+
+### 6-1. 表を足す（SQL Editor）
+
+1. Supabase の左のメニューの **SQL Editor** → 上の **+**
+2. GitHub の `supabase/migrations/20261105000000_study_log.sql` の全文を貼り付けて **Run**
+3. **Success. No rows returned** と出て、**Table Editor** に `study_items` と `study_events` が増えていれば完了
+
+手順2の `20261104000000_cache_and_rate_limits.sql` がまだなら、そちらを先に実行する（ファイル名の日付の順）。
+
+### 6-2. 自分のアカウントを作る
+
+1. 左のメニューの **Authentication**（人のアイコン）→ **Users**
+2. 右上の **Add user** → **Create new user**
+3. **Email address** と **Password** を入れ、**Auto Confirm User** にチェックを入れて **Create user**
+
+### 6-3. 新規登録をできないようにする
+
+1. **Authentication** → 左の **Sign In / Providers**（または **Providers**）
+2. 上のほうの **Allow new users to sign up** をオフにして **Save changes**
+
+これで、6-2 で作ったアカウント以外はログインできない。
+
+### 6-4. Publishable key を確かめる
+
+**Project Settings** → **API Keys** の **Publishable key** の欄（`sb_publishable_...`）。右のコピーのアイコンでコピーする。
+
+### 6-5. Vercel に入れる
+
+**Settings** → **Environment Variables** に次の2つを追加し、**Redeploy** する（`NEXT_PUBLIC_` の値はビルドのときに埋め込まれるので、Redeploy しないと反映されない）。
+
+| Key | Value | Sensitive |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Project URL（`SUPABASE_URL` と同じ値） | オフ |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key | オフ |
+
+### 6-6. 確かめる
+
+1. 公開中のサイトのトップの右上に **Sign in** が出る → 押して 6-2 のメールアドレスとパスワードでログイン
+2. 画面の下に **Search / Learned / Review** のタブが出る
+3. 何か検索してから **Learned** を開くと、Today の一覧に出る
+4. 翌日以降、**Review** に復習の数が出る
+
 ## 回数制限（変えたいとき）
 
 AI に問い合わせる回数だけを数える（保存済みの結果は数えない）。Vercel の Environment Variables で変えられる。
@@ -85,6 +129,10 @@ AI に問い合わせる回数だけを数える（保存済みの結果は数�
 | 2回目も遅い・`lookups` に行が増えない | Vercel の環境変数が入っていないか、Redeploy していない。Vercel の **Logs** に `[cache]` の行があれば、そのスクリーンショットを送る |
 | Logs に `relation "public.lookups" does not exist` | 手順2の SQL を実行していない |
 | Logs に `Invalid API key` | `SUPABASE_SECRET_KEY` が違う（Publishable key を入れていないか確かめる） |
+| トップに **Sign in** が出ない | `NEXT_PUBLIC_SUPABASE_URL` か `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` が入っていないか、Redeploy していない |
+| 「Wrong email or password.」 | 6-2 で作ったメールアドレス・パスワードと違う。Supabase の **Users** でパスワードを変えられる（ユーザーの行の **⋯** → **Send password recovery** は無料枠のメールを使うので、作り直すほうが確実） |
+| 「This email address is not confirmed yet.」 | 6-2 で **Auto Confirm User** にチェックしていなかった。ユーザーを消して作り直す |
+| Learned に「Could not load your study log.」 | 6-1 の SQL を実行していない。実行したら **Reload** |
 | 別サイトから呼ぶと `forbidden_origin`、またはブラウザのコンソールに CORS のエラー | `ALLOWED_ORIGINS` にそのサイトが入っていない（`http` と `https` の違いにも注意）。入れたら Redeploy |
 | 「Lookup limit reached.」が出る | 回数制限に達した。1時間（全体なら翌日の午前9時、日本時間）で戻る |
 | しばらく使っていなかったら保存されない | Supabase の無料プロジェクトは1週間使わないと一時停止する。Supabase のダッシュボードでプロジェクトを開き **Restore project** を押す。停止中も検索は AI に直接問い合わせて動く |
