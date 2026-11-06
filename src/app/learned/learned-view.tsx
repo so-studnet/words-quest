@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { NotificationSettings } from "@/components/notification-settings";
 import { signOut, useAuth } from "@/lib/auth";
 import { dailySummary, localDate, logByDay, MASTERED_STAGE, studyStats, type DaySummary } from "@/lib/domain/study";
 import { dayLabel, shortDate } from "@/lib/format-date";
@@ -65,6 +66,8 @@ export function LearnedView() {
           </div>
         ))}
       </section>
+
+      <NotificationSettings />
 
       {auth.status === "signed-in" && (
         <p className="text-sm text-muted">

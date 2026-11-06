@@ -9,7 +9,7 @@
 | キャッシュ・回数制限 | Supabase（PostgreSQL・無料プラン）+ `@supabase/supabase-js` | 無料。サーバーからだけ読み書きする |
 | 公開 | Vercel（Hobby・無料） | GitHub に push するだけで公開される |
 | テスト | Vitest（ロジック）、Playwright（画面の確認） | |
-| 通知 ※段階6から | PWA + Web Push + Supabase pg_cron | |
+| 通知 | PWA + Web Push（`web-push`）+ Supabase pg_cron / pg_net | 無料。Vercel Cron（Hobby）は1日1回までで時刻を選べないので、Supabase から毎時呼ぶ |
 
 使っていないもの：辞書 API（Free Dictionary API・Datamuse）。全部 AI に任せる方針にしたため。発音記号の精度が足りなければ後から足す。
 
@@ -25,6 +25,24 @@
 - `src/lib/study-store.ts`：ログインしたら全件を読み込み（1000 件ずつ）、変更は画面をすぐ変えてから順番に送る（項目 → 記録）。失敗したらサーバーから読み直す
 - 記録・復習・集計の計算は `src/lib/domain/study.ts` の純粋関数（日付は日本時間の日、時刻は UTC の ISO 文字列）。DB の行との変換は `study-rows.ts`
 - 画面：`/login`、`/learned`、`/review`。下のタブは `src/components/app-nav.tsx`
+
+## 今日の単語の通知（M6）
+
+```
+Supabase pg_cron（毎時5分）
+  └─ pg_net で POST /api/push/dispatch（Authorization: Bearer CRON_SECRET。合言葉は Vault）
+        └─ Route Handler（src/app/api/push/dispatch/route.ts）
+              ├─ rpc claim_word_of_the_day_push()：端末の現地時刻が notify_hour〜+3時間で、
+              │    その日まだ送っていない端末を「送信済み」にしつつ取り出す（主キーで二重送信を防ぐ）
+              ├─ wordOfTheDay(現地の日付) → lookupCached で定義（キャッシュ。AI は1日1回まで）
+              ├─ web-push で送信（VAPID、TTL 6時間）
+              └─ 404/410 の端末は delete_push_subscription で消す
+```
+
+- 送信の流れは `src/lib/domain/push.ts`（依存を外から渡すのでテストできる）、単語の選び方は `word-of-the-day.ts`（一度だけシャッフルした一覧を日付で一周）
+- 端末の登録・時刻の変更・解除は `src/lib/push-client.ts`。Service Worker は `public/sw.js`（通知の表示と、押したときに画面を開く）
+- `/tools/keys`：VAPID の鍵と CRON_SECRET をブラウザの Web Crypto で作るページ（`src/lib/vapid.ts`。`web-push` と同じ形式）
+- 設定の不足は 503（不足している名前の一覧）、合言葉違いは 401
 
 ## 処理の流れ
 
@@ -52,6 +70,10 @@
 | `SUPABASE_SECRET_KEY` | Supabase の Secret key（`sb_secret_...`） | 秘密。サーバーだけ |
 | `RATE_LIMIT_PER_HOUR` / `AI_DAILY_LIMIT` | 回数制限（既定 30 / 500） | 公開してよい |
 | `RATE_LIMIT_SALT` | IP のハッシュに混ぜる文字列（任意） | ― |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push の公開鍵 | 公開してよい |
+| `VAPID_PRIVATE_KEY` | Web Push の秘密鍵 | 秘密。サーバーだけ |
+| `VAPID_SUBJECT` | `mailto:メールアドレス`（iPhone はこの形が必要） | 公開してよい |
+| `CRON_SECRET` | 毎時の呼び出しの合言葉 | 秘密。Vercel と Supabase の Vault だけ |
 | `ALLOWED_ORIGINS` | ブラウザから API を呼んでよい他のサイト（カンマ区切り。`*` で全部） | 公開してよい |
 
 ## API
@@ -85,6 +107,10 @@
   - IP アドレスはそのまま保存せず、ハッシュにする
   - `study_items`：`id`（アプリで作る UUID）、`user_id`、`key`（ユーザーごとに一意）、`text`、`kind`、`result`（jsonb・なしも可）、`stage`（0〜6。6 は習得済み）、`due_on`（次の復習日。習得済みなら null）、`created_at`（学んだ日時）、`updated_at`
   - `study_events`：`id`、`user_id`、`item_id`、`type`（`search` / `review_ok` / `review_ng`）、`at`。`(item_id, user_id)` で `study_items` を参照するので、他人の項目には記録を付けられない。項目を消すと記録も消える
+  - `push_subscriptions`：`endpoint`（主キー）、`user_id`、`p256dh`、`auth`、`time_zone`、`notify_hour`（0〜23、既定 8）。RLS で本人だけ
+  - `push_deliveries`：`(endpoint, local_date)` が主キー。サーバー専用。30 日より古いものは消す。端末を消すと一緒に消える
+  - `claim_word_of_the_day_push(p_now)` / `delete_push_subscription(endpoint)`：service_role だけが呼べる
+  - `supabase/cron/word-of-the-day.sql`：毎時の呼び出しの登録（マイグレーションではない。合言葉と URL を書き換えて流す）
   - `study_*` は RLS で本人だけ（`authenticated` で `user_id = auth.uid()`）。未ログイン（`anon`）は権限なし
 - DB のテスト：`npm run test:db`（一時的な PostgreSQL に Supabase の最小限を再現し、`supabase/tests/*.test.sql` を流す）
 
@@ -105,7 +131,10 @@ src/lib/domain/       純粋関数とその型・テスト（入力の判定、�
 src/lib/ai/           AI の Provider（provider.ts がインターフェース、groq.ts が Groq 実装）
 src/lib/lookup.ts     検索の流れ（lookup：AI だけ、lookupCached：キャッシュと回数制限つき。依存を受け取るのでテストで差し替えられる）
 src/lib/store.ts      キャッシュと回数制限のインターフェース
-src/lib/supabase/     Supabase 実装（サーバー専用）
+src/lib/supabase/     Supabase の接続（server.ts はサーバー専用、client.ts はブラウザ用）
+src/lib/*-store.ts    ブラウザの状態（履歴・学習記録）
+public/sw.js          Service Worker（通知）
 supabase/migrations/  DB の定義（本番には SQL Editor で手で流す）
 supabase/tests/       DB のテスト
+supabase/cron/        毎時の呼び出しの登録 SQL（書き換えて手で流す）
 ```

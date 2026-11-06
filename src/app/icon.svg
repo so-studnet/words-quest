@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#2557d6"/>
+  <!-- open book, kept inside the maskable safe zone (radius 40% from center) -->
+  <path d="M256 196c-30-22-72-32-120-30v176c48-2 90 8 120 30z" fill="#ffffff"/>
+  <path d="M256 196c30-22 72-32 120-30v176c-48-2-90 8-120 30z" fill="#dbe5ff"/>
+  <path d="M256 196v176" stroke="#2557d6" stroke-width="6"/>
+  <path d="M166 214h60M166 246h60M166 278h44M286 214h60M286 246h60M286 278h44" stroke="#2557d6" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+</svg>
