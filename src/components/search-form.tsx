@@ -9,6 +9,7 @@ import { history } from "@/lib/history-store";
 import { study } from "@/lib/study-store";
 import { HistoryList } from "./history-list";
 import { ResultView } from "./result-view";
+import { WordOfTheDayCard } from "./word-of-the-day-card";
 
 type FetchedBody =
   | { status: "done"; result: LookupResult }
@@ -103,6 +104,7 @@ export function SearchForm() {
 
       {!error && current?.status === "done" && <ResultView result={current.result} />}
 
+      {!q && <WordOfTheDayCard />}
       {!q && <HistoryList />}
     </div>
   );
@@ -127,7 +129,7 @@ function SearchBox({
         name="q"
         type="search"
         defaultValue={defaultValue}
-        placeholder="Word, phrase, or sentence"
+        placeholder="Word or phrase"
         autoComplete="off"
         autoCapitalize="none"
         spellCheck={false}

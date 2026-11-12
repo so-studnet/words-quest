@@ -56,5 +56,8 @@ export async function signIn(email: string, password: string): Promise<string | 
 }
 
 export async function signOut(): Promise<void> {
+  // Stop this device's notifications before the session (needed to delete the row) is gone.
+  const { disablePush } = await import("@/lib/push-client");
+  await disablePush().catch((e) => console.warn("[push] could not remove this device", e));
   await getBrowserSupabase().auth.signOut();
 }
