@@ -8,7 +8,7 @@
 - `docs/requirements.md`：要件（F1〜）と決めた点
 - `docs/architecture.md`：技術構成・処理の流れ・データモデル
 - `docs/roadmap.md`：マイルストーンと状態
-- `docs/setup.md`：利用者向けの Supabase・Vercel の設定手順（7. は今日の単語の通知）
+- `docs/setup.md`：利用者向けの Supabase・Vercel の設定手順（7. は今日の単語の通知、8. は Anki）
 
 ## 開発ルール
 - サイトの UI 文言・結果・エラーメッセージはすべて英語。ドキュメントとユーザーへの説明は日本語

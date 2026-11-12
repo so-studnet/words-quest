@@ -43,6 +43,21 @@ export function LearnedView() {
 
       <LearnedChart days={dailySummary(s.data, today, CHART_DAYS)} />
 
+      {stats.total > 0 && (
+        <Link
+          href="/anki"
+          className="flex items-center justify-between rounded-xl border border-border px-4 py-3 hover:border-accent"
+        >
+          <span>
+            <span className="font-semibold">Send to Anki</span>
+            <span className="block text-sm text-muted">Make flashcards from what you looked up</span>
+          </span>
+          <span aria-hidden="true" className="text-xl text-muted">
+            →
+          </span>
+        </Link>
+      )}
+
       <section aria-label="By day" className="flex flex-col gap-5">
         {log.length === 0 && (
           <p className="text-muted">

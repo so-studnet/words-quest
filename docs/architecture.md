@@ -44,6 +44,21 @@ Supabase pg_cron（毎時5分）
 - `/tools/keys`：VAPID の鍵と CRON_SECRET をブラウザの Web Crypto で作るページ（`src/lib/vapid.ts`。`web-push` と同じ形式）
 - 設定の不足は 503（不足している名前の一覧）、合言葉違いは 401
 
+## Anki（A1）
+
+- カードの中身は `src/lib/domain/anki.ts`（純粋関数）：表・裏の HTML（エスケープ済み）、タグ、ノートタイプのテンプレートと CSS（ダークモード対応）、語句ごとの GUID（キーの FNV-1a 64bit）、Anki の検索語（Front の完全一致）
+- `.apkg`：`src/lib/anki-package.ts`。ブラウザの中で sql.js（WebAssembly）で `collection.anki2`（スキーマ 11）を作り、fflate で zip にする。デッキ・ノートタイプの ID は固定。`public/sql-wasm.wasm` は `npm install` / `npm run build` のときに `scripts/copy-sql-wasm.mjs` が node_modules からコピーする（Git には入れない）
+- AnkiConnect：`src/lib/anki-connect.ts`。ブラウザから `http://127.0.0.1:8765` に送る。`requestPermission` → ノートタイプとデッキを作る → 語句ごとに Front で探し、あれば裏とタグを更新、なければ追加
+- 画面：`/anki`（`src/app/anki/`）。書き出しの流れは `src/lib/anki-export.ts`（結果がない項目の取得、共有かダウンロード）
+- テスト：`.apkg` を Anki 公式の Python パッケージ（`pip install anki`）で取り込み、新規・更新・タグ・エスケープ・読み上げを確かめた（自動テストには入れていない。手順は下）
+
+```bash
+python3 -m venv /tmp/ankienv && /tmp/ankienv/bin/pip install anki
+# 作った .apkg を Collection.import_anki_package で取り込み、find_notes / card.answer() で中身を見る
+```
+
+- 既知の制約：AnkiConnect で追加したノートは Anki が GUID を決めるので、そのあと同じ語句を .apkg で取り込むと重複する（.apkg → AnkiConnect の順なら更新される）
+
 ## 処理の流れ
 
 ```
@@ -134,6 +149,7 @@ src/lib/store.ts      キャッシュと回数制限のインターフェース
 src/lib/supabase/     Supabase の接続（server.ts はサーバー専用、client.ts はブラウザ用）
 src/lib/*-store.ts    ブラウザの状態（履歴・学習記録）
 public/sw.js          Service Worker（通知）
+scripts/              チェック一式、DB テスト、sql.js の wasm のコピー
 supabase/migrations/  DB の定義（本番には SQL Editor で手で流す）
 supabase/tests/       DB のテスト
 supabase/cron/        毎時の呼び出しの登録 SQL（書き換えて手で流す）
