@@ -70,6 +70,16 @@ describe("httpInvoke", () => {
     expect(await httpInvoke("http://x", f)("modelNames")).toEqual(["Basic"]);
     expect(sent).toEqual({ action: "modelNames", version: 6, params: {} });
   });
+  it("gives up when Anki does not answer (e.g. a hidden permission window)", async () => {
+    const hang = ((_u: string, init: RequestInit) =>
+      new Promise((_, reject) => {
+        init.signal?.addEventListener("abort", () => reject(init.signal!.reason));
+      })) as unknown as typeof fetch;
+    const invoke = httpInvoke("http://x", hang, { normal: 20, permission: 40 });
+    await expect(invoke("requestPermission")).rejects.toMatchObject({ code: "timeout" });
+    await expect(invoke("modelNames")).rejects.toMatchObject({ code: "timeout" });
+  });
+
   it("maps network failures and Anki errors", async () => {
     const down = (async () => {
       throw new TypeError("Failed to fetch");

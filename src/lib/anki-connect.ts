@@ -16,11 +16,15 @@ import {
 
 export const ANKI_CONNECT_URL = "http://127.0.0.1:8765";
 
+/** Normal calls answer at once. requestPermission waits until you click Yes/No in Anki. */
+export const TIMEOUT_MS = 15_000;
+export const PERMISSION_TIMEOUT_MS = 60_000;
+
 export type Invoke = <T>(action: string, params?: Record<string, unknown>) => Promise<T>;
 
 export class AnkiConnectError extends Error {
   constructor(
-    readonly code: "unreachable" | "denied" | "anki",
+    readonly code: "unreachable" | "denied" | "anki" | "timeout",
     message: string,
   ) {
     super(message);
@@ -28,12 +32,25 @@ export class AnkiConnectError extends Error {
   }
 }
 
-export function httpInvoke(url = ANKI_CONNECT_URL, fetchImpl: typeof fetch = fetch): Invoke {
+export function httpInvoke(
+  url = ANKI_CONNECT_URL,
+  fetchImpl: typeof fetch = fetch,
+  timeouts = { normal: TIMEOUT_MS, permission: PERMISSION_TIMEOUT_MS },
+): Invoke {
   return async <T>(action: string, params: Record<string, unknown> = {}) => {
+    const ms = action === "requestPermission" ? timeouts.permission : timeouts.normal;
     let res: Response;
     try {
-      res = await fetchImpl(url, { method: "POST", body: JSON.stringify({ action, version: 6, params }) });
-    } catch {
+      res = await fetchImpl(url, {
+        method: "POST",
+        body: JSON.stringify({ action, version: 6, params }),
+        signal: AbortSignal.timeout(ms),
+      });
+    } catch (e) {
+      const name = (e as { name?: string }).name;
+      if (name === "TimeoutError" || name === "AbortError") {
+        throw new AnkiConnectError("timeout", `Anki did not answer ${action} in ${ms / 1000}s`);
+      }
       throw new AnkiConnectError("unreachable", "Could not reach Anki");
     }
     const body = (await res.json().catch(() => null)) as { result?: T; error?: string | null } | null;

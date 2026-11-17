@@ -17,6 +17,7 @@
 | M5.4 | Review：忘却曲線に沿った復習カード | 実装完了（同上） |
 | M6 | PWA・今日の単語の通知（Web Push + pg_cron） | 実装完了（本番の設定と実機への到達は未確認） |
 | A1 | Anki：.apkg の書き出しと AnkiConnect での直接追加（`/anki`） | 実装完了（本物の Anki ライブラリで取り込みを確認。実際の PC の Anki・AnkiMobile では未確認） |
+| R1 | ランダム（`/random`）：語句だけを出し、Look it up で検索・記録 | 完了（偽の Supabase で確認） |
 | 将来 | 復習の通知 | ― |
 
 ## 動作確認のしかた（M2）

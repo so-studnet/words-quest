@@ -59,6 +59,12 @@ python3 -m venv /tmp/ankienv && /tmp/ankienv/bin/pip install anki
 
 - 既知の制約：AnkiConnect で追加したノートは Anki が GUID を決めるので、そのあと同じ語句を .apkg で取り込むと重複する（.apkg → AnkiConnect の順なら更新される）
 
+## ランダム（R1）
+
+- 一覧は `src/lib/domain/random-entries.ts`（種類×レベルごとに `|` 区切りの文字列）。手書きの一覧から重複を除いて作ったもの。語句を足すときはここに書き、`npm test` で「単語は1語、句動詞・イディオムは検索で phrase になる（2〜5語）」「重複なし」を確かめる
+- 選び方は `src/lib/domain/random.ts`（純粋関数）：絞り込み、学習記録の除外、表示中の語句を避けてランダムに1つ、URL の組み立て
+- 画面は `src/app/random/`。表示中の語句・絞り込みは URL に持つ。学習記録を読み終わってから最初の1つを選ぶ（覚えた語句を確実に除くため）。表示だけでは何も書き込まない
+
 ## 処理の流れ
 
 ```

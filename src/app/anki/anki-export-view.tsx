@@ -85,7 +85,10 @@ export function AnkiExportView() {
 
   const sendDesktop = () =>
     withCards(async ({ cards }) => {
-      setStatus({ kind: "working", text: "Sending to Anki… (allow this site in Anki if it asks)" });
+      setStatus({
+        kind: "working",
+        text: "Sending to Anki… If nothing happens, switch to the Anki window and click Yes to allow this site.",
+      });
       const r = await sendToAnki(httpInvoke(), cards);
       const failed = r.failed.length ? ` Anki refused: ${r.failed.join(", ")}.` : "";
       return `Added ${r.added}, updated ${r.updated} in Anki.${failed}`;
@@ -191,6 +194,8 @@ function errorMessage(e: unknown): string {
     if (e.code === "unreachable")
       return "Could not reach Anki. Open Anki on this PC (with the AnkiConnect add-on) and try again.";
     if (e.code === "denied") return "Anki did not allow this site. Try again and choose Yes in Anki.";
+    if (e.code === "timeout")
+      return "Anki did not answer. Look for a permission window in Anki (it may be behind other windows), click Yes, and try again. If no window appears, add this site to webCorsOriginList in the AnkiConnect config.";
     return `Anki said: ${e.message}`;
   }
   return "Something went wrong. Please try again.";

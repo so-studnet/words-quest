@@ -185,6 +185,9 @@ Words Quest を公開して使うための設定。ブラウザだけででき�
 |---|---|
 | 「Could not reach Anki.」 | PC の Anki が開いているか、AnkiConnect を入れて再起動したかを確かめる。ブラウザのローカル ネットワークの確認で「ブロック」を選んだ場合は、アドレスバー左のアイコン → サイトの設定で許可に戻す |
 | 「Anki did not allow this site.」 | もう一度押して、Anki の確認で **Yes** を押す |
+| 「Sending to Anki…」のまま、または「Anki did not answer.」 | Anki が「このサイトを許可するか」の画面を出して待っている。タスクバーの Anki を押して前に出し、**Yes** を押してからもう一度送る。画面が見当たらないときは、次の行の方法でサイトを先に登録する |
+| 許可の画面が出ない | Anki の **ツール** → **アドオン** → **AnkiConnect** → **設定** で、`"webCorsOriginList": ["http://localhost"]` に本番のアドレスを足して `["http://localhost", "https://（本番のドメイン）"]` にする → **OK** → Anki を再起動 |
+| AnkiConnect が動いているか確かめたい | Chrome で `http://127.0.0.1:8765` を開き、`AnkiConnect` のような文字が出れば動いている |
 | 裏で発音が流れない | Anki の読み上げは端末の英語の音声を使う。Windows は 設定 → 時刻と言語 → 音声 で英語（米国）の音声を追加する |
 | 「Skipped (could not load): …」 | 結果を取れなかった語句。少し待ってからもう一度送る |
 
