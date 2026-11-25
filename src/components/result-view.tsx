@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { LookupResult } from "@/lib/domain/lookup-result";
+import { googleImagesUrl } from "@/lib/domain/image-search";
 import { SpeakButton } from "./speak-button";
 
 const KIND_LABELS: Record<LookupResult["kind"], string> = {
@@ -40,6 +41,21 @@ export function ResultView({ result }: { result: LookupResult }) {
         <p className="text-sm text-muted">{KIND_LABELS[result.kind]}</p>
         <div className="mt-1 flex items-start gap-3">
           <h2 className="min-w-0 flex-1 text-3xl font-bold break-words">{result.query}</h2>
+          <a
+            href={googleImagesUrl(result.query)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Google Images for ${result.query} (opens in a new tab)`}
+            title="Google Images"
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-sm text-muted hover:border-accent hover:text-accent"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="9" cy="9" r="2" />
+              <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+            </svg>
+            Images
+          </a>
           <SpeakButton text={result.query} label="Listen" />
         </div>
         {result.phonetic && <p className="mt-1 text-lg text-muted">{result.phonetic}</p>}
